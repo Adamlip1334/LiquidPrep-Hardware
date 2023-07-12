@@ -184,10 +184,25 @@ class BLECallbacks: public BLECharacteristicCallbacks {
       } else if(pdoc["type"].as<String>() == "CALIBRATE") {
         int mode = pdoc["value"].as<String>() == "water" ? CALIBRATE_WATER : CALIBRATE_AIR;
         calibrateSensor(mode);
+      } else if(pdoc["type"].as<String>() == "UPDATE") { // UPDATE condition
+        std::string updateData = pdoc["value"].as<String>();
+        if(!Update.begin()) {
+          // handle error
+        }
+        for (int i = 0; i < updateData.size(); i++) {
+          if(Update.write(updateData[i]) != 1) {
+            // handle error
+          }
+        }
+        if(!Update.end()) {
+          // handle error
+        }
+        ESP.restart();
       }
     }
   }
 };
+
 void calculate() {
   int val = analogRead(sensorPin); // connect sensor to Analog pin
   char str[8];
