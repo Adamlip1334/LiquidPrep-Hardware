@@ -234,6 +234,11 @@ class BLECallbacks : public BLECharacteristicCallbacks
       {
         setDeviceName(pdoc["value"].as<String>().c_str());
       }
+      else if (pdoc["type"].as<String>() == "BLEOFF")
+      {
+        disableBluetooth();
+        Serial.println("Bluetooth disabled via Bluetooth");
+      }
     }
   }
 };
