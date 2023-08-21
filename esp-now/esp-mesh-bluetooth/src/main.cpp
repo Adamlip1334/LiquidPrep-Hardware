@@ -8,7 +8,7 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-int DEVICE_ID = 5;             // set device id, need to store in SPIFFS
+int DEVICE_ID = 5;         // set device id, need to store in SPIFFS
 String DEVICE_NAME = "Z5"; // set device name
 
 String moistureLevel = "";
@@ -24,7 +24,7 @@ int espInterval = 80000; // interval for reading data
 uint8_t gatewayMacAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 String gatewayMac = "7821848D8840";
 
-#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 BLECharacteristic *pCharacteristic;
@@ -138,7 +138,8 @@ void calibrateSensor(int mode)
     msg += ", New=" + String(s2.c_str());
   }
   saveJson();
-  setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", CALIBRATE_RESULT, BROADCAST, msg, espInterval, WEB_REQUEST_RESULT);
+  DEVICE
+  setPayload(payload, DEVICE_ID, _NAME, "", hostMac, "", CALIBRATE_RESULT, BROADCAST, msg, espInterval, WEB_REQUEST_RESULT);
 
   payload.msgId = generateMessageHash(payload);
   Serial.printf("\n%s, %d\n\n", payload.msg, payload.msgId);
@@ -178,18 +179,16 @@ void setDeviceName(const char *deviceName)
 
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->stop();
-  
+
   BLEAdvertisementData oAdvertisementData = BLEAdvertisementData();
   oAdvertisementData.setName(bleName);
-  
+
   pAdvertising->setAdvertisementData(oAdvertisementData);
 
   pAdvertising->start();
-  
+
   Serial.println("Name change complete. New name is now advertising.");
 }
-
-
 
 class BLECallbacks : public BLECharacteristicCallbacks
 {
