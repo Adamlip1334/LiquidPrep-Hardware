@@ -138,8 +138,7 @@ void calibrateSensor(int mode)
     msg += ", New=" + String(s2.c_str());
   }
   saveJson();
-  DEVICE
-  setPayload(payload, DEVICE_ID, _NAME, "", hostMac, "", CALIBRATE_RESULT, BROADCAST, msg, espInterval, WEB_REQUEST_RESULT);
+  setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", CALIBRATE_RESULT, BROADCAST, msg, espInterval, WEB_REQUEST_RESULT);
 
   payload.msgId = generateMessageHash(payload);
   Serial.printf("\n%s, %d\n\n", payload.msg, payload.msgId);
@@ -190,6 +189,27 @@ void setDeviceName(const char *deviceName)
   Serial.println("Name change complete. New name is now advertising.");
 }
 
+void disableBluetooth()
+{
+  if (pServer)
+  {
+    uint16_t connId = 0; // Replace with actual connection ID
+
+    pServer->getAdvertising()->stop();
+
+    pServer->disconnect(connId);
+
+    pServer = nullptr;
+    pCharacteristic = nullptr;
+
+    Serial.println("Bluetooth disabled");
+  }
+  else
+  {
+    Serial.println("Bluetooth is not enabled");
+  }
+}
+
 class BLECallbacks : public BLECharacteristicCallbacks
 {
   void onWrite(BLECharacteristic *pCharacteristic)
@@ -236,7 +256,7 @@ class BLECallbacks : public BLECharacteristicCallbacks
       else if (pdoc["type"].as<String>() == "BLEOFF")
       {
         disableBluetooth();
-        Serial.println("Bluetooth disabled via Bluetooth");
+
       }
     }
   }
@@ -321,27 +341,6 @@ void enableBluetooth()
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
   Serial.println("Characteristic defined! Now you can read it on your phone!");
-}
-
-void disableBluetooth()
-{
-  if (pServer)
-  {
-    uint16_t connId = 0; // Replace with actual connection ID
-
-    pServer->getAdvertising()->stop();
-
-    pServer->disconnect(connId); // Now passing a connection ID
-
-    delete pServer;
-    pServer = nullptr; // Reset pServer to nullptr
-
-    Serial.println("Bluetooth disabled");
-  }
-  else
-  {
-    Serial.println("Bluetooth is not enabled");
-  }
 }
 
 // callback when data is sent
@@ -583,6 +582,10 @@ void loop()
   esp_now_send(broadcastAddress, (uint8_t *)&payload, sizeof(payload));
   // esp_now_send(gatewayMacAddress, (uint8_t *)&payload, sizeof(payload));
 
-  pCharacteristic->setValue(moistureLevel.c_str());
+  if (pServer != nullptr)
+  {
+    pCharacteristic->setValue(moistureLevel.c_str());
+  }
+
   delay(espInterval);
 }
