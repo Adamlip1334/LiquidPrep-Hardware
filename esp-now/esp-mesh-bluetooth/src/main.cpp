@@ -7,14 +7,9 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include "esp_ota_ops.h"
-#include "esp_bt.h"
 
-int DEVICE_ID = 5;         // set device id, need to store in SPIFFS
+int DEVICE_ID = 5;             // set device id, need to store in SPIFFS
 String DEVICE_NAME = "Z5"; // set device name
-
-esp_ota_handle_t update_handle = 0;
-const esp_partition_t *ota_partition = NULL;
 
 String moistureLevel = "";
 int airValue = 3440;   // 3442;  // enter your max air value here
@@ -29,7 +24,7 @@ int espInterval = 80000; // interval for reading data
 uint8_t gatewayMacAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 String gatewayMac = "7821848D8840";
 
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 BLECharacteristic *pCharacteristic;
@@ -169,7 +164,35 @@ void calibrateByPercentage(int percent)
   saveJson();
   setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", CALIBRATE_RESULT, BROADCAST, msg, espInterval, WEB_REQUEST_RESULT);
 }
-class BLECallbacks: public BLECharacteristicCallbacks {
+
+void setDeviceName(const char *deviceName)
+{
+  Serial.printf("Update device name: %s\n\n", deviceName);
+
+  DEVICE_NAME = deviceName;
+  saveJson();
+
+  char bleName[80] = "";
+  sprintf(bleName, "ESP32-LiquidPrep-%s", DEVICE_NAME);
+  Serial.printf("Changing BLE name to: %s\n", bleName);
+
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->stop();
+  
+  BLEAdvertisementData oAdvertisementData = BLEAdvertisementData();
+  oAdvertisementData.setName(bleName);
+  
+  pAdvertising->setAdvertisementData(oAdvertisementData);
+
+  pAdvertising->start();
+  
+  Serial.println("Name change complete. New name is now advertising.");
+}
+
+
+
+class BLECallbacks : public BLECharacteristicCallbacks
+{
   void onWrite(BLECharacteristic *pCharacteristic)
   {
     std::string value = pCharacteristic->getValue();
@@ -207,10 +230,20 @@ class BLECallbacks: public BLECharacteristicCallbacks {
         int mode = pdoc["value"].as<String>() == "water" ? CALIBRATE_WATER : CALIBRATE_AIR;
         calibrateSensor(mode);
       }
+      else if (pdoc["type"].as<String>() == "NAME")
+      {
+        setDeviceName(pdoc["value"].as<String>().c_str());
+      }
+      else if (pdoc["type"].as<String>() == "BLEOFF")
+      {
+        disableBluetooth();
+        Serial.println("Bluetooth disabled via Bluetooth");
+      }
     }
   }
 };
-void calculate() {
+void calculate()
+{
   int val = analogRead(sensorPin); // connect sensor to Analog pin
   char str[8];
   if (val >= airValue)
@@ -341,30 +374,32 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
       Serial.println("processing...\n");
       int from = payload.from == WEB_REQUEST ? WEB_REQUEST_RESULT : NO_TASK;
       char msg[80];
-      switch(payload.task) {
-        case PING:
-          setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", PING_BACK, BROADCAST, DEVICE_NAME, espInterval, from);
-          Serial.printf("%d, %s, %s, %s, %d, %s\n", payload.id,payload.name,payload.hostAddress,payload.senderAddress,payload.task,payload.msg);
-          payload.msgId = generateMessageHash(payload);
-          esp_now_send(broadcastAddress, (uint8_t *) &payload, sizeof(payload));
+      int bluetooth = pServer ? 1 : 0;
+      switch (payload.task)
+      {
+      case PING:
+        setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", PING_BACK, BROADCAST, DEVICE_NAME, espInterval, from);
+        Serial.printf("%d, %s, %s, %s, %d, %s\n", payload.id, payload.name, payload.hostAddress, payload.senderAddress, payload.task, payload.msg);
+        payload.msgId = generateMessageHash(payload);
+        esp_now_send(broadcastAddress, (uint8_t *)&payload, sizeof(payload));
         break;
-        case QUERY:
-          sprintf(msg, "%d,%d,%d,%d,%s,%s", airValue, waterValue, sensorPin, wifiChannel, hostMac.c_str(), "");
-          Serial.printf("msg: %s -> %d", msg, from);
-          setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", QUERY_RESULT, BROADCAST, msg, espInterval, from);
-          payload.msgId = generateMessageHash(payload);
-          esp_now_send(broadcastAddress, (uint8_t *) &payload, sizeof(payload));
+      case QUERY:
+        sprintf(msg, "%d,%d,%d,%d,%s,%s,%s,%d", airValue, waterValue, sensorPin, wifiChannel, hostMac.c_str(), "", "?", bluetooth);
+        Serial.printf("msg: %s -> %d", msg, from);
+        setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", QUERY_RESULT, BROADCAST, msg, espInterval, from);
+        payload.msgId = generateMessageHash(payload);
+        esp_now_send(broadcastAddress, (uint8_t *)&payload, sizeof(payload));
         break;
       case CALIBRATE_AIR:
       case CALIBRATE_WATER:
         calibrateSensor(payload.task);
         break;
-        case GET_MOISTURE:
-          calculate();
-          sprintf(msg, "%d,%d,%d,%d,%s,%s,%s", airValue, waterValue, sensorPin, wifiChannel, hostMac.c_str(), "", moistureLevel);
-          setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", MOISTURE_RESULT, BROADCAST, msg, espInterval, from);
-          payload.msgId = generateMessageHash(payload);
-          esp_now_send(broadcastAddress, (uint8_t *) &payload, sizeof(payload));
+      case GET_MOISTURE:
+        calculate();
+        sprintf(msg, "%d,%d,%d,%d,%s,%s,%s,%d", airValue, waterValue, sensorPin, wifiChannel, hostMac.c_str(), "", moistureLevel, bluetooth);
+        setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", MOISTURE_RESULT, BROADCAST, msg, espInterval, from);
+        payload.msgId = generateMessageHash(payload);
+        esp_now_send(broadcastAddress, (uint8_t *)&payload, sizeof(payload));
         break;
       case UPDATE_DEVICE_NAME:
         Serial.printf("update device name: %s\n\n", payload.name);
@@ -381,8 +416,16 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
         espInterval = payload.espInterval;
         saveJson();
         break;
-        default:
-          Serial.println("Nothing to do.\n");
+      case ENABLE_BLUETOOTH:
+        Serial.println("enable bluetooth");
+        enableBluetooth();
+        break;
+      case DISABLE_BLUETOOTH:
+        Serial.println("disable bluetooth");
+        disableBluetooth();
+        break;
+      default:
+        Serial.println("Nothing to do.\n");
         break;
       }
     }
@@ -415,32 +458,6 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
       }
     }
   }
-}
-
-void enableBluetooth() {
-  char bleName[80] = "";
-  sprintf(bleName, "ESP32-LiquidPrep-%s", DEVICE_NAME);
-  Serial.printf("Starting BLE work!  %s\n", bleName);
-
-  BLEDevice::init(bleName);
-  BLEServer *pServer = BLEDevice::createServer();
-  BLEService *pService = pServer->createService(SERVICE_UUID);
-  pCharacteristic = pService->createCharacteristic(
-                                         CHARACTERISTIC_UUID,
-                                         BLECharacteristic::PROPERTY_READ |
-                                         BLECharacteristic::PROPERTY_WRITE
-                                       );
-  // pCharacteristic->setValue("92");  // use this to hard-code value sent via bluetooth (for testing)
-  pCharacteristic->setCallbacks(new BLECallbacks());
-  pService->start();
-  // BLEAdvertising *pAdvertising = pServer->getAdvertising();  // this still is working for backward compatibility
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
-  pAdvertising->setMinPreferred(0x12);
-  BLEDevice::startAdvertising();
-  Serial.println("Characteristic defined! Now you can read it in your phone!");                                       
 }
 
 void setup()
