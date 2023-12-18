@@ -114,20 +114,20 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
     if(payload.task == PING_BACK) {
       Serial.printf("Ping: %d, %s, %d, %d\n", payload.msgId, payload.name, payload.type, payload.task);
       Serial.println();
-      response = "{\"mac\": \"" + payload.senderAddress + "\", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"type\": " + String(payload.type) + ", \"task\": " + String(payload.task) + "}";
+      response = "{\"mac\": \"" + payload.senderAddress + "\", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"type\": " + String(payload.type) + ", \"task\": " + String(payload.task)  +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
     } else if(payload.task == UPDATE_WIFI_RESULT) {
       Serial.printf("Wifi updated: %d, %s, %d, %d\n", payload.msgId, payload.name, payload.type, payload.task);
       Serial.println();
-      response = "{\"mac\": \"" + payload.senderAddress + "\", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"type\": " + String(payload.type) + ", \"task\": " + String(payload.task) + "}";
+      response = "{\"mac\": \"" + payload.senderAddress + "\", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"type\": " + String(payload.type) + ", \"task\": " + String(payload.task) +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
     }
     else if(payload.task == QUERY_RESULT || payload.task == CALIBRATE_RESULT || payload.task == MOISTURE_RESULT) {
       Serial.printf("Query: %d, %s, %d, %d, %s, %s\n", payload.msgId, payload.name, payload.type, payload.task, from, payload.msg);
       Serial.println();
-      response = "{\"mac\": \"" + payload.senderAddress + "\", \"interval\": " + String(payload.espInterval) + ", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"msg\": \"" + payload.msg + "\", \"type\": " + String(payload.type) + ", \"task\": " + String(payload.task) + "}";
+      response = "{\"mac\": \"" + payload.senderAddress + "\", \"interval\": " + String(payload.espInterval) + ", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"msg\": \"" + payload.msg + "\", \"type\": " + String(payload.type) + ", \"task\": " + String(payload.task)  +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
     } else {
       Serial.println(payload.name + ", " + payload.id + ", " + payload.moisture + ", " + payload.task);
       Serial.println();
-      response = "{\"mac\": \"" + payload.senderAddress + "\", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"moisture\": \"" + payload.moisture + "\"}";
+      response = "{\"mac\": \"" + payload.senderAddress + "\", \"id\": " + String(payload.id) + from + ", \"name\": \"" + payload.name + "\", \"moisture\": \"" + payload.moisture  +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
     }
     sendData(response);
   }  
@@ -135,7 +135,7 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
 
 String moistureJson() {
   calculate();
-  String response = "{\"mac\": \"" + hostMac + "\", \"id\": " + String(DEVICE_ID) + ", \"name\": \"" + DEVICE_NAME + "\", \"moisture\": " + moistureLevel + "}";
+  String response = "{\"mac\": \"" + hostMac + "\", \"id\": " + String(DEVICE_ID) + ", \"name\": \"" + DEVICE_NAME + "\", \"moisture\": " + moistureLevel  +  "\", \"Capacitance\": " + String(capacitance) + "}";
   Server.send(200, "text/json", response);
   Serial.printf("sensor reading: %s\n", moistureLevel);
   return response;
@@ -165,7 +165,7 @@ void calibrate() {
       }
       saveJson();
       sprintf(payload.msg, "%d,%d,%d,%s,%s", airValue, waterValue, sensorPin, senderMac.c_str(), receiverMac.c_str());
-      String response = "{\"mac\": \"" + hostMac + "\", \"interval\": " + String(espInterval) + ", \"id\": " + String(DEVICE_ID) + ", \"from\": " + String(WEB_REQUEST_RESULT) + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(CALIBRATE_RESULT) + "}";
+      String response = "{\"mac\": \"" + hostMac + "\", \"interval\": " + String(espInterval) + ", \"id\": " + String(DEVICE_ID) + ", \"from\": " + String(WEB_REQUEST_RESULT) + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(CALIBRATE_RESULT)  +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
       sendData(response);
     } else {
       int task = Server.arg(0) == "air_value" ? CALIBRATE_AIR : CALIBRATE_WATER;
@@ -193,7 +193,7 @@ void getMoisture() {
       Serial.printf("why why why, %s\n", fromStr);
       calculate();
       sprintf(payload.msg, "%d,%d,%d,%d,%s,%s,%s", airValue, waterValue, sensorPin, WiFi.channel(), hostMac.c_str(), "", moistureLevel);
-      String response = "{\"mac\": \"" + hostMac + "\", \"interval\": " + String(espInterval) + ", \"id\": " + String(DEVICE_ID) + fromStr + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(MOISTURE_RESULT) + "}";
+      String response = "{\"mac\": \"" + hostMac + "\", \"interval\": " + String(espInterval) + ", \"id\": " + String(DEVICE_ID) + fromStr + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(MOISTURE_RESULT)  +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
       sendData(response);
     } else {
       Serial.printf("from: %d\n", from);
@@ -220,7 +220,7 @@ void queryESP() {
       }
       Serial.printf("why why why, %s\n", fromStr);
       sprintf(payload.msg, "%d,%d,%d,%d,%s,%s", airValue, waterValue, sensorPin, WiFi.channel(), senderMac.c_str(), receiverMac.c_str());
-      String response = "{\"mac\": \"" + hostMac + "\", \"interval\": " + String(espInterval) + ", \"id\": " + String(DEVICE_ID) + fromStr + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(QUERY_RESULT) + "}";
+      String response = "{\"mac\": \"" + hostMac + "\", \"interval\": " + String(espInterval) + ", \"id\": " + String(DEVICE_ID) + fromStr + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(QUERY_RESULT) +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
       sendData(response);
     } else {
       Serial.printf("from: %d\n", from);
@@ -245,7 +245,7 @@ void pingESP() {
         fromStr = ", \"from\": " + String(WEB_REQUEST_RESULT);
       }
       sprintf(payload.msg, "%d,%d,%d,%s,%s", airValue, waterValue, sensorPin, senderMac.c_str(), receiverMac.c_str());
-      String response = "{\"mac\": \"" + hostMac + "\", \"id\": " + String(DEVICE_ID) + fromStr + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(PING_BACK) + "}";
+      String response = "{\"mac\": \"" + hostMac + "\", \"id\": " + String(DEVICE_ID) + fromStr + ", \"name\": \"" + DEVICE_NAME + "\", \"msg\": \"" + payload.msg + "\", \"task\": " + String(PING_BACK)  +  "\", \"Capacitance\": " + String(payload.capacitance) + "}";
       setPayload(payload, DEVICE_ID, DEVICE_NAME, "", hostMac, "", PING_BACK, BROADCAST, DEVICE_NAME, espInterval, WEB_REQUEST_RESULT, capacitance);
       sendData(response);
     } else {

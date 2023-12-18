@@ -327,6 +327,27 @@ void enableBluetooth()
   Serial.println("Characteristic defined! Now you can read it on your phone!");
 }
 
+void disableBluetooth()
+{
+  if (pServer)
+  {
+    uint16_t connId = 0; // Replace with actual connection ID
+
+    pServer->getAdvertising()->stop();
+
+    pServer->disconnect(connId); // Now passing a connection ID
+
+    delete pServer;
+    pServer = nullptr; // Reset pServer to nullptr
+
+    Serial.println("Bluetooth disabled");
+  }
+  else
+  {
+    Serial.println("Bluetooth is not enabled");
+  }
+}
+
 // callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
 {
@@ -574,10 +595,6 @@ void loop()
   esp_now_send(broadcastAddress, (uint8_t *)&payload, sizeof(payload));
   // esp_now_send(gatewayMacAddress, (uint8_t *)&payload, sizeof(payload));
 
-  if (pServer != nullptr)
-  {
-    pCharacteristic->setValue(moistureLevel.c_str());
-  }
-
+  pCharacteristic->setValue(moistureLevel.c_str());
   delay(espInterval);
 }
